@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=SSH Launcher
+Exec=/home/awojs/PycharmProjects/ssh-launcher/ssh-launcher
+Icon=/home/awojs/PycharmProjects/ssh-launcher/ssh-launcher.png
+Type=Application
+Terminal=false
+Categories=Utility;Application;
+StartupNotify=true
+OnlyShowIn=GNOME;Unity;
+Actions=;

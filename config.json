@@ -1,0 +1,8 @@
+{
+  "items": [
+    {
+      "name": "COMMAND NAME",
+      "cmd":  "COMMAND EXEC"
+    }  
+  ]
+}

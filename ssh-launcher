@@ -1,0 +1,92 @@
+#!/usr/bin/python
+# -*- encoding: utf-8 -*-
+
+import sys
+import os
+import logging
+import datetime
+import json
+from gi.repository import Unity, GObject, Dbusmenu
+
+TERMINAL_CMD = 'gnome-terminal -e \'%cmd%\''
+
+def strtr(text, dic):
+    """ Replace in 'text' all occurences of any key in the given
+    dictionary by its corresponding value.  Returns the new string."""
+    # http://code.activestate.com/recipes/81330/
+    # Create a regular expression  from the dictionary keys
+    import re
+    regex = re.compile("(%s)" % "|".join(map(re.escape, dic.keys())))
+    # For each match, look-up corresponding value in dictionary
+    return regex.sub(lambda mo: str(dic[mo.string[mo.start():mo.end()]]), text)
+
+
+def run_callback(arg0, arg1, item):
+    """ Uruchamia polecenie"""
+    cmd = strtr(TERMINAL_CMD, {
+        "%name%": item['name'],
+        "%cmd%":  item['cmd'].replace('\'', '\\\\\'')
+    })
+
+    logging.debug("[%s] CMD execute: %s" % (str(datetime.datetime.utcnow()), cmd))
+
+    os.system(cmd)
+
+
+def exit_callback(arg0, arg1, loop):
+    logging.debug("[%s] Application exit." % str(datetime.datetime.now()))
+    loop.quit()
+
+
+def main():
+    pwd = os.path.abspath(os.path.dirname(sys.argv[0]))
+
+    logging.basicConfig(filename=pwd + "/ssh-launcher.log", level=logging.DEBUG)
+    logging.debug("[%s] Application execute: %s" % (str(datetime.datetime.now()), os.path.abspath(sys.argv[0])))
+
+    # Wczytujemy konfiguracje
+    config = { 'items': [] }
+    if os.path.exists(pwd + '/config.json'):
+        with open(pwd + '/config.json') as data:
+            config =  json.load(data)
+    else:
+        logging.error("[%s] Config file not found!." % str(datetime.datetime.now()))
+        sys.exit(-1)
+
+    mainloop = GObject.MainLoop()
+
+    # Budujemy menu
+    quicklist = Dbusmenu.Menuitem.new()
+    for item in config['items']:
+        item_cmd = Dbusmenu.Menuitem.new()
+        item_cmd.property_set(Dbusmenu.MENUITEM_PROP_LABEL, item['name'])
+        item_cmd.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+        item_cmd.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, run_callback, item)
+
+        quicklist.child_append(item_cmd)
+
+    separator = Dbusmenu.Menuitem.new()
+    separator.property_set(Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+    separator.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+    quicklist.child_append(separator)
+
+    item_exit = Dbusmenu.Menuitem.new()
+    item_exit.property_set(Dbusmenu.MENUITEM_PROP_LABEL, "EXIT")
+    item_exit.property_set_bool(Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+    item_exit.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, exit_callback, mainloop)
+
+    quicklist.child_append(item_exit)
+
+    launcher = Unity.LauncherEntry.get_for_desktop_id(pwd + "/ssh-launcher.desktop")
+    launcher.set_property("quicklist", quicklist)
+
+    logging.debug("[%s] SSH menu created." % (str(datetime.datetime.now())))
+
+    mainloop.run()
+
+
+if __name__ == '__main__':
+    main()
+
+
+
